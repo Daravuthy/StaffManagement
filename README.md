@@ -57,6 +57,11 @@ Before end-to-end tests, install the Playwright browser runtime:
 pwsh .\StaffManagement\tests\StaffManagement.EndToEndTests\bin\Debug\net9.0\playwright.ps1 install
 ```
 
+## CI
+
+The GitHub Actions workflow for this assignment currently validates `restore` and `build` on Windows only.
+Tests are kept as local verification steps and are not required to run in CI for this submission.
+
 ## Technical Notes
 
 - Persistence uses SQLite for a simple submission setup.
