@@ -31,11 +31,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 9.0.x
-          cache: true
-          cache-dependency-path: |
-            Directory.Build.props
-            src/**/*.csproj
-            tests/**/*.csproj
 
       - name: Restore
         run: dotnet restore StaffManagement.sln
@@ -61,7 +56,12 @@ jobs:
 
       - name: Install Playwright browser
         shell: pwsh
-        run: ./tests/StaffManagement.EndToEndTests/bin/Release/net9.0/playwright.ps1 install --with-deps chromium
+        run: |
+          $playwright = Join-Path $PWD "tests/StaffManagement.EndToEndTests/bin/Release/net9.0/playwright.ps1"
+          if (-not (Test-Path $playwright)) {
+            throw "Playwright install script not found at $playwright"
+          }
+          & $playwright install --with-deps chromium
 
       - name: Start API and web app
         run: |
