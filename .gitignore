@@ -1,0 +1,6 @@
+artifacts/
+TestResults/
+api.log
+web.log
+*.user
+*.suo

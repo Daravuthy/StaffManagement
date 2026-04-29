@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <BaseOutputPath>C:\Users\daravuthy.sok\.codex\memories\staff-management-build\bin\$(MSBuildProjectName)\</BaseOutputPath>
-    <BaseIntermediateOutputPath>C:\Users\daravuthy.sok\.codex\memories\staff-management-build\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts/bin/$(MSBuildProjectName)/</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)artifacts/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
   </PropertyGroup>
 </Project>
