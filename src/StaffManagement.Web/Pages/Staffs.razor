@@ -1,0 +1,297 @@
+@page "/staffs"
+@inject StaffApiClient StaffApiClient
+
+<PageTitle>Staffs</PageTitle>
+
+<div id="staff-page" data-ready="@isInitialized" data-busy="@isBusy">
+    <div class="page-header">
+        <div>
+            <p class="eyebrow">Assignment Scope</p>
+            <h1>Staff Management</h1>
+            <p class="text-muted">Create, edit, delete, advanced search, and export the current result set.</p>
+        </div>
+        <button id="open-new-staff" class="btn btn-success" @onclick="OpenNewStaffModal">New Staff</button>
+    </div>
+
+    @if (isBusy)
+    {
+        <div id="staff-page-loading" class="alert alert-light">Loading staff records...</div>
+    }
+
+    @if (isInitialized)
+    {
+        <div id="staff-page-ready" hidden></div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <div id="staff-status-message" class="alert @(isError ? "alert-danger" : "alert-success")">@statusMessage</div>
+    }
+
+    <section class="panel">
+        <div class="compact-search-header">
+            <h2 class="mb-0">Advanced Search</h2>
+            <span class="text-muted">Filter the result set before export.</span>
+        </div>
+        <div class="search-input-row">
+            <div>
+                <label class="form-label">Staff ID</label>
+                <InputText id="search-staff-id" class="form-control" @bind-Value="search.StaffId" />
+            </div>
+            <div>
+                <label class="form-label">Full name</label>
+                <InputText id="search-full-name" class="form-control" @bind-Value="search.FullName" />
+            </div>
+            <div>
+                <label class="form-label">Gender</label>
+                <InputSelect id="search-gender" class="form-select" @bind-Value="search.Gender">
+                    <option value="">All</option>
+                    <option value="@Gender.Male">Male</option>
+                    <option value="@Gender.Female">Female</option>
+                </InputSelect>
+            </div>
+            <div>
+                <label class="form-label">Birthday from</label>
+                <InputDate id="search-birthday-from" class="form-control" @bind-Value="search.BirthdayFrom" />
+            </div>
+            <div>
+                <label class="form-label">Birthday to</label>
+                <InputDate id="search-birthday-to" class="form-control" @bind-Value="search.BirthdayTo" />
+            </div>
+        </div>
+        <div class="search-button-row">
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="search-submit" class="btn btn-dark" @onclick="LoadAsync" disabled="@isBusy">Search</button>
+                <button id="search-reset" class="btn btn-outline-secondary" @onclick="ResetSearch">Reset</button>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="export-excel" class="btn btn-outline-success" @onclick="ExportExcelAsync" disabled="@isBusy">Export Excel</button>
+                <button id="export-pdf" class="btn btn-outline-danger" @onclick="ExportPdfAsync" disabled="@isBusy">Export PDF</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Results</h2>
+            <span id="results-count" class="badge rounded-pill text-bg-success">@staffs.Count staff(s)</span>
+        </div>
+
+        <div class="table-responsive">
+            <table id="staff-results" class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Staff ID</th>
+                        <th>Full Name</th>
+                        <th>Birthday</th>
+                        <th>Gender</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (staffs.Count == 0)
+                    {
+                        <tr>
+                            <td id="staff-results-empty" colspan="5" class="text-center text-muted py-4">No staffs found.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var staff in staffs)
+                        {
+                            <tr data-staff-id="@staff.StaffId">
+                                <td>@staff.StaffId</td>
+                                <td>@staff.FullName</td>
+                                <td>@staff.Birthday.ToString("yyyy-MM-dd")</td>
+                                <td>@staff.Gender</td>
+                                <td class="text-end">
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(staff)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(staff.Id)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+@if (isFormModalOpen)
+{
+    <div id="staff-form-modal" class="staff-modal-backdrop" @onclick="CloseFormModal">
+        <div class="staff-modal-panel" @onclick:stopPropagation="true">
+            <div class="staff-modal-header">
+                <div>
+                    <p class="eyebrow">Staff Record</p>
+                    <h2>@(editingId.HasValue ? "Edit Staff" : "Create Staff")</h2>
+                </div>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="CloseFormModal"></button>
+            </div>
+
+            <EditForm Model="@staffForm" OnValidSubmit="SaveAsync">
+                <DataAnnotationsValidator />
+                <div class="modal-form-grid">
+                    <div>
+                        <label class="form-label">Staff ID</label>
+                        <InputText id="staff-id" class="form-control" @bind-Value="staffForm.StaffId" />
+                        <ValidationMessage For="() => staffForm.StaffId" />
+                    </div>
+                    <div>
+                        <label class="form-label">Full name</label>
+                        <InputText id="staff-full-name" class="form-control" @bind-Value="staffForm.FullName" />
+                        <ValidationMessage For="() => staffForm.FullName" />
+                    </div>
+                    <div>
+                        <label class="form-label">Birthday</label>
+                        <InputDate id="staff-birthday" class="form-control" @bind-Value="staffForm.Birthday" />
+                        <ValidationMessage For="() => staffForm.Birthday" />
+                    </div>
+                    <div>
+                        <label class="form-label">Gender</label>
+                        <InputSelect id="staff-gender" class="form-select" @bind-Value="staffForm.Gender">
+                            <option value="">Select gender</option>
+                            <option value="@Gender.Male">Male</option>
+                            <option value="@Gender.Female">Female</option>
+                        </InputSelect>
+                        <ValidationMessage For="() => staffForm.Gender" />
+                    </div>
+                </div>
+                <div class="staff-modal-actions">
+                    <button id="save-staff" class="btn btn-success" disabled="@isBusy">@(editingId.HasValue ? "Update" : "Create")</button>
+                    <button id="clear-staff-form" type="button" class="btn btn-outline-secondary" @onclick="ResetForm">Clear</button>
+                    <button id="cancel-staff-form" type="button" class="btn btn-outline-dark" @onclick="CloseFormModal">Cancel</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private readonly StaffUpsertRequest staffForm = new()
+    {
+        Birthday = DateOnly.FromDateTime(DateTime.Today.AddYears(-25))
+    };
+    private readonly StaffSearchRequest search = new();
+    private List<StaffDto> staffs = new List<StaffDto>();
+    private Guid? editingId;
+    private bool isBusy;
+    private bool isFormModalOpen;
+    private bool isInitialized;
+    private bool isError;
+    private string? statusMessage;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        isBusy = true;
+        await ExecuteAsync(async () => staffs = await StaffApiClient.SearchAsync(search));
+        isBusy = false;
+        isInitialized = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        isBusy = true;
+
+        await ExecuteAsync(async () =>
+        {
+            if (editingId.HasValue)
+            {
+                await StaffApiClient.UpdateAsync(editingId.Value, staffForm);
+                statusMessage = "Staff updated successfully.";
+            }
+            else
+            {
+                await StaffApiClient.CreateAsync(staffForm);
+                statusMessage = "Staff created successfully.";
+            }
+
+            isError = false;
+            ResetForm();
+            isFormModalOpen = false;
+            await LoadAsync();
+        });
+
+        isBusy = false;
+    }
+
+    private void Edit(StaffDto staff)
+    {
+        editingId = staff.Id;
+        staffForm.StaffId = staff.StaffId;
+        staffForm.FullName = staff.FullName;
+        staffForm.Birthday = staff.Birthday;
+        staffForm.Gender = staff.Gender;
+        statusMessage = null;
+        isFormModalOpen = true;
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        isBusy = true;
+
+        await ExecuteAsync(async () =>
+        {
+            await StaffApiClient.DeleteAsync(id);
+            statusMessage = "Staff deleted successfully.";
+            isError = false;
+            await LoadAsync();
+        });
+
+        isBusy = false;
+    }
+
+    private async Task ExportExcelAsync() =>
+        await ExecuteAsync(async () => await StaffApiClient.ExportAsync(search, "excel", "staff-report.xlsx"));
+
+    private async Task ExportPdfAsync() =>
+        await ExecuteAsync(async () => await StaffApiClient.ExportAsync(search, "pdf", "staff-report.pdf"));
+
+    private void ResetForm()
+    {
+        editingId = null;
+        staffForm.StaffId = string.Empty;
+        staffForm.FullName = string.Empty;
+        staffForm.Birthday = DateOnly.FromDateTime(DateTime.Today.AddYears(-25));
+        staffForm.Gender = null;
+    }
+
+    private void OpenNewStaffModal()
+    {
+        ResetForm();
+        statusMessage = null;
+        isFormModalOpen = true;
+    }
+
+    private void CloseFormModal()
+    {
+        isFormModalOpen = false;
+    }
+
+    private async Task ResetSearch()
+    {
+        search.StaffId = null;
+        search.FullName = null;
+        search.Gender = null;
+        search.BirthdayFrom = null;
+        search.BirthdayTo = null;
+        await LoadAsync();
+    }
+
+    private async Task ExecuteAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            statusMessage = exception.Message;
+            isError = true;
+        }
+    }
+}
