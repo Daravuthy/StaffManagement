@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+      CONFIGURATION: Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+          cache: true
+          cache-dependency-path: |
+            Directory.Build.props
+            src/**/*.csproj
+            tests/**/*.csproj
+
+      - name: Restore
+        run: dotnet restore StaffManagement.sln
+
+      - name: Build
+        run: dotnet build StaffManagement.sln --configuration "$CONFIGURATION" --no-restore
+
+      - name: Run unit tests
+        run: >
+          dotnet test tests/StaffManagement.UnitTests/StaffManagement.UnitTests.csproj
+          --configuration "$CONFIGURATION"
+          --no-build
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory ./TestResults/unit
+
+      - name: Run integration tests
+        run: >
+          dotnet test tests/StaffManagement.IntegrationTests/StaffManagement.IntegrationTests.csproj
+          --configuration "$CONFIGURATION"
+          --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory ./TestResults/integration
+
+      - name: Install Playwright browser
+        shell: pwsh
+        run: ./tests/StaffManagement.EndToEndTests/bin/Release/net9.0/playwright.ps1 install --with-deps chromium
+
+      - name: Start API and web app
+        run: |
+          dotnet run --configuration "$CONFIGURATION" --no-build --launch-profile http --project src/StaffManagement.Api/StaffManagement.Api.csproj > api.log 2>&1 &
+          dotnet run --configuration "$CONFIGURATION" --no-build --launch-profile http --project src/StaffManagement.Web/StaffManagement.Web.csproj > web.log 2>&1 &
+
+      - name: Wait for application startup
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5144/health > /dev/null && curl -fsS http://localhost:5165/_framework/blazor.boot.json > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Application startup timed out."
+          echo "API log:"
+          cat api.log
+          echo "Web log:"
+          cat web.log
+          exit 1
+
+      - name: Run end-to-end tests
+        env:
+          STAFF_MGMT_API_HEALTH_URL: http://localhost:5144/health
+          STAFF_MGMT_WEB_URL: http://localhost:5165
+        run: >
+          dotnet test tests/StaffManagement.EndToEndTests/StaffManagement.EndToEndTests.csproj
+          --configuration "$CONFIGURATION"
+          --no-build
+          --logger "trx;LogFileName=e2e-tests.trx"
+          --results-directory ./TestResults/e2e
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/
+          if-no-files-found: warn
+
+      - name: Upload application logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-logs
+          path: |
+            api.log
+            web.log
+          if-no-files-found: warn
