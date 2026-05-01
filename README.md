@@ -59,8 +59,13 @@ pwsh .\StaffManagement\tests\StaffManagement.EndToEndTests\bin\Debug\net9.0\play
 
 ## CI
 
-The GitHub Actions workflow for this assignment currently validates `restore` and `build` on Windows only.
-Tests are kept as local verification steps and are not required to run in CI for this submission.
+The GitHub Actions workflow runs on `windows-latest` and validates:
+
+- `dotnet restore .\StaffManagement.sln`
+- `dotnet build .\StaffManagement.sln --configuration Release --no-restore`
+- `dotnet test .\tests\StaffManagement.UnitTests\StaffManagement.UnitTests.csproj --configuration Release --no-restore`
+
+Integration tests and Playwright end-to-end tests are still intended for local verification and are not currently part of the CI workflow.
 
 ## Technical Notes
 
