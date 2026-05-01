@@ -43,4 +43,4 @@ jobs:
 
       - name: Unit Tests
         shell: pwsh
-        run: dotnet test .\tests\StaffManagement.UnitTests\StaffManagement.UnitTests.csproj --configuration $env:CONFIGURATION --no-build --logger "trx;LogFileName=unit-tests.trx"
+        run: dotnet test .\tests\StaffManagement.UnitTests\StaffManagement.UnitTests.csproj --configuration $env:CONFIGURATION --no-restore --logger "trx;LogFileName=unit-tests.trx"
