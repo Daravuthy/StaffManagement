@@ -40,3 +40,7 @@ jobs:
       - name: Build
         shell: pwsh
         run: dotnet build .\StaffManagement.sln --configuration $env:CONFIGURATION -p:Platform="$env:PLATFORM" --no-restore
+
+      - name: Unit Tests
+        shell: pwsh
+        run: dotnet test .\tests\StaffManagement.UnitTests\StaffManagement.UnitTests.csproj --configuration $env:CONFIGURATION --no-build --logger "trx;LogFileName=unit-tests.trx"
